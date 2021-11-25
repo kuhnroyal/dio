@@ -92,7 +92,7 @@ void main() {
     assert(opt5.path == '/');
 
     // Keys of header are case-insensitive
-    expect(opt5.headers['B'], '6');
+    expect(opt5.headers['B'], '7');
     opt5.headers['B'] = 9;
     assert(opt5.headers['b'] == 9);
   });
@@ -158,17 +158,13 @@ void main() {
       //
     }
 
-    assert(Options(contentType: contentTypeJson).compose(bo1, '').contentType ==
-        contentTypeJson);
+    assert(Options(contentType: contentTypeJson).compose(bo1, '').contentType == contentTypeJson);
 
-    assert(Options(contentType: contentTypeJson).compose(bo2, '').contentType ==
-        contentTypeJson);
+    assert(Options(contentType: contentTypeJson).compose(bo2, '').contentType == contentTypeJson);
 
-    assert(Options(headers: jsonHeaders).compose(bo1, '').contentType ==
-        contentTypeJson);
+    assert(Options(headers: jsonHeaders).compose(bo1, '').contentType == contentTypeJson);
 
-    assert(Options(headers: jsonHeaders).compose(bo2, '').contentType ==
-        contentTypeJson);
+    assert(Options(headers: jsonHeaders).compose(bo2, '').contentType == contentTypeJson);
 
     /// RequestOptions
     try {
@@ -210,8 +206,7 @@ void main() {
     dio.options.setRequestContentTypeWhenNoPayload = true;
 
     r1 = await dio.get('');
-    assert(r1.requestOptions.headers[Headers.contentTypeHeader] ==
-        Headers.jsonContentType);
+    assert(r1.requestOptions.headers[Headers.contentTypeHeader] == Headers.jsonContentType);
 
     dio.options.setRequestContentTypeWhenNoPayload = false;
 
@@ -220,8 +215,7 @@ void main() {
       options: Options(contentType: Headers.jsonContentType),
     );
 
-    assert(r2.requestOptions.headers[Headers.contentTypeHeader] ==
-        Headers.jsonContentType);
+    assert(r2.requestOptions.headers[Headers.contentTypeHeader] == Headers.jsonContentType);
 
     var r3 = await dio.get(
       '',
@@ -229,12 +223,10 @@ void main() {
         Headers.contentTypeHeader: Headers.jsonContentType,
       }),
     );
-    assert(r3.requestOptions.headers[Headers.contentTypeHeader] ==
-        Headers.jsonContentType);
+    assert(r3.requestOptions.headers[Headers.contentTypeHeader] == Headers.jsonContentType);
 
     var r4 = await dio.post('', data: '');
-    assert(r4.requestOptions.headers[Headers.contentTypeHeader] ==
-        Headers.jsonContentType);
+    assert(r4.requestOptions.headers[Headers.contentTypeHeader] == Headers.jsonContentType);
   });
 
   test('#test default content-type2', () async {
@@ -245,14 +237,12 @@ void main() {
     var r1 = Options(method: 'GET').compose(dio.options, '/test').copyWith(
       headers: {Headers.contentTypeHeader: Headers.textPlainContentType},
     );
-    assert(
-        r1.headers[Headers.contentTypeHeader] == Headers.textPlainContentType);
+    assert(r1.headers[Headers.contentTypeHeader] == Headers.textPlainContentType);
 
     var r2 = Options(method: 'GET').compose(dio.options, '/test').copyWith(
           contentType: Headers.textPlainContentType,
         );
-    assert(
-        r2.headers[Headers.contentTypeHeader] == Headers.textPlainContentType);
+    assert(r2.headers[Headers.contentTypeHeader] == Headers.textPlainContentType);
 
     try {
       Options(method: 'GET').compose(dio.options, '/test').copyWith(

@@ -8,7 +8,7 @@ void main() async {
   var tokenDio = Dio();
   String? csrfToken;
   dio.options.baseUrl = 'http://www.dtworkroom.com/doris/1/2.0.0/';
-  tokenDio.options = dio.options;
+  tokenDio.options = dio..options;
   dio.interceptors.add(QueuedInterceptorsWrapper(
     onRequest: (options, handler) {
       print('send request：path:${options.path}，baseURL:${options.baseUrl}');
@@ -17,8 +17,7 @@ void main() async {
         tokenDio.get('/token').then((d) {
           options.headers['csrfToken'] = csrfToken = d.data['data']['token'];
           print('request token succeed, value: ' + d.data['data']['token']);
-          print(
-              'continue to perform request：path:${options.path}，baseURL:${options.path}');
+          print('continue to perform request：path:${options.path}，baseURL:${options.path}');
           handler.next(options);
         }).catchError((error, stackTrace) {
           handler.reject(error, true);
@@ -67,9 +66,5 @@ void main() async {
     print('request ok!');
   }
 
-  await Future.wait([
-    dio.get('/test?tag=1').then(_onResult),
-    dio.get('/test?tag=2').then(_onResult),
-    dio.get('/test?tag=3').then(_onResult)
-  ]);
+  await Future.wait([dio.get('/test?tag=1').then(_onResult), dio.get('/test?tag=2').then(_onResult), dio.get('/test?tag=3').then(_onResult)]);
 }

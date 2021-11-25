@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+
 import 'options.dart';
 import 'redirect_record.dart';
 
@@ -85,7 +86,7 @@ class ResponseBody {
     this.statusMessage,
     this.isRedirect = false,
   }) : stream = Stream.fromIterable(
-            utf8.encode(text).map((e) => Uint8List.fromList([e])).toList());
+utf8.encode(text).map((e) => Uint8List.fromList([e])).toList());
 
   ResponseBody.fromBytes(
     List<int> bytes,
