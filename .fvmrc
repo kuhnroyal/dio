@@ -1,0 +1,8 @@
+{
+  "flutter": "stable",
+  "flavors": {
+    "current": "stable",
+    "max": "beta",
+    "min": "2.8.0"
+  }
+}

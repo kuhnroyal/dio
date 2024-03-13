@@ -13,6 +13,8 @@ ide:
     enabled: true
     moduleNamePrefix: ''
 
+sdkPath: .fvm/flutter_sdk
+
 command:
   bootstrap:
     runPubGetInParallel: false
