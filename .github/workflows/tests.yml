@@ -7,7 +7,7 @@ on:
       - '6.0.0'
     paths-ignore:
       - "**.md"
-  pull_request_target:
+  pull_request:
     branches:
       - main
       - '6.0.0'
@@ -41,7 +41,7 @@ jobs:
         with:
           cache: true
           flutter-version: ${{ matrix.sdk == 'min' && '3.3.0' || '' }}
-          channel: ${{ matrix.sdk == 'min' && '' || matrix.channel }}
+          channel: ${{ matrix.sdk == 'min' && 'stable' || matrix.channel }}
       - run: dart pub get
       - uses: bluefireteam/melos-action@v3
         with:
