@@ -37,9 +37,9 @@ jobs:
       TEST_PRESET: all
     steps:
       - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2.13.0
         with:
-#          cache: true
+          cache: true
           flutter-version: ${{ matrix.sdk == 'min' && '3.3.0' || '' }}
           channel: ${{ matrix.sdk == 'min' && '' || matrix.channel }}
       - run: dart pub get
