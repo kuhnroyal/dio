@@ -9,17 +9,23 @@ on:
 jobs:
   download_coverage:
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.payload.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'pull_request'
+    if: github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.conclusion == 'success'
     steps:
+      - env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: |
+          echo "$GITHUB_CONTEXT"
       - name: Download artifact
-        uses: actions/download-artifact@v4
+        id: download-artifact
+        uses: dawidd6/action-download-artifact@v3
         with:
+          workflow: tests.yml
+          workflow_conclusion: success
           run_id: ${{ github.event.workflow_run.id }}
           name: code-coverage-results.md
-          path: .
       - name: Add PR comment
         uses: marocchino/sticky-pull-request-comment@v2
         with:
-          number: ${{ github.event.workflow_run.payload.workflow_run.pull_requests[0].number }}
+          number: ${{ github.event.workflow_run.pull_requests[0].number }}
           recreate: true
           path: code-coverage-results.md
