@@ -20,6 +20,8 @@ import 'utils.dart';
 /// {@endtemplate}
 typedef ProgressCallback = void Function(int count, int total);
 
+typedef Foo = void Function(int count, int total);
+
 /// Indicates which transformation should be applied to the response data.
 enum ResponseType {
   /// Transform the response data to JSON object only when the
