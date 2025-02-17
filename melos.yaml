@@ -2,11 +2,23 @@ name: dio_workspace
 repository: https://github.com/cfug/dio
 
 packages:
-  - 'dio'
+  - '*'
   - 'plugins/*'
-  - 'plugins/**/example*'
-  - 'example*'
-  - 'dio_test'
+  - 'plugins/*/example*'
+
+categories:
+  min:
+    - '*'
+    - 'plugins/compatibility_layer'
+    - 'plugins/compatibility_layer/example'
+    - 'plugins/cookie_manager'
+    - 'plugins/cookie_manager/example'
+    - 'plugins/http2_adapter'
+    - 'plugins/http2_adapter/example'
+  stable:
+    - '*'
+    - 'plugins/*'
+    - 'plugins/*/example'
 
 ide:
   intellij:
@@ -16,18 +28,15 @@ ide:
 command:
   bootstrap:
     runPubGetInParallel: false
-    hooks:
-      pre: |
-        # Check bootstrappable packages.
-        dart ./scripts/melos_packages.dart
   clean:
     hooks:
       post: |
+        set -e
         # Clean all flutter projects
         melos exec --flutter -- "flutter clean"
         # Clean coverage files
-        rm -rf coverage
-        rm -rf pubspec.lock
+        melos exec rm -rf coverage
+        melos exec rm -rf pubspec.lock
         melos exec --dir-exists coverage -- "rm -rf coverage"
 
 scripts:
@@ -55,72 +64,71 @@ scripts:
   test:
     name: All tests
     run: |
+      set -e
       melos run test:vm
-      TEST_PLATFORM=chrome melos run test:web
-      TEST_PLATFORM=firefox melos run test:web
+      melos run test:web:chrome
+      melos run test:web:firefox
       melos run test:flutter
   test:vm:
     name: Dart VM tests
-    exec: |
-      if [ "$TARGET_DART_SDK" = "min" ]; then
-        dart test --preset=${TEST_PRESET:-default},${TARGET_DART_SDK:-stable} --chain-stack-traces
-      else
-        dart test --preset=${TEST_PRESET:-default},${TARGET_DART_SDK:-stable} --coverage=coverage/vm --chain-stack-traces
-      fi
+    exec: dart test --preset=${TEST_PRESET:-default},${TARGET_DART_SDK:-stable} --chain-stack-traces
     packageFilters:
       flutter: false
       dirExists: test
-      fileExists: .melos_package
       ignore:
         - 'dio_web_adapter'
+  test:vm:coverage:
+    name: Dart VM tests with coverage
+    run: melos test:vm -- --coverage=coverage/vm
   test:web:
     name: Dart Web tests
     run: |
+      set -e
       melos run test:web:chrome
       melos run test:web:firefox
   test:web:chrome:
     name: Dart Web tests in chrome
-    run: melos run test:web:single
-    env:
-      TEST_PLATFORM: chrome
-      WITH_WASM: true
-  test:web:firefox:
-    name: Dart Web tests in firefox
-    run: melos run test:web:single
-    env:
-      TEST_PLATFORM: firefox
-      WITH_WASM: false
-  test:web:single:
-    name: Dart Web tests in a browser
-    exec: |
-      if [ "$TARGET_DART_SDK" = "min" ]; then
-        dart test --platform ${TEST_PLATFORM} --preset=${TEST_PRESET:-default},${TARGET_DART_SDK:-stable} --chain-stack-traces
-      else
-        dart test --platform ${TEST_PLATFORM} --coverage=coverage/${TEST_PLATFORM} --preset=${TEST_PRESET:-default},${TARGET_DART_SDK:-stable} --chain-stack-traces
-        if [ "$WITH_WASM" = "true" ]; then
-          dart test --platform ${TEST_PLATFORM} --coverage=coverage/${TEST_PLATFORM} --preset=${TEST_PRESET:-default},${TARGET_DART_SDK:-stable} --chain-stack-traces --compiler=dart2wasm
-        fi
-      fi
+    exec: dart test --platform chrome --preset=${TEST_PRESET:-default},${TARGET_DART_SDK:-stable} --chain-stack-traces --compiler=dart2wasm
     packageFilters:
       flutter: false
       dirExists: test
-      fileExists: .melos_package
       ignore:
         - '*http2*'
         - '*cookie*'
+  test:web:chrome:coverage:
+    name: Dart Web tests in chrome with coverage
+    run: test:web:chrome -- --coverage=coverage/chrome
+  test:web:firefox:
+    name: Dart Web tests in firefox
+    exec: dart test --platform firefox --preset=${TEST_PRESET:-default},${TARGET_DART_SDK:-stable} --chain-stack-traces
+    packageFilters:
+      flutter: false
+      dirExists: test
+      ignore:
+        - '*http2*'
+        - '*cookie*'
+  test:web:firefox:coverage:
+    name: Dart Web tests in firefox with coverage
+    run: test:web:firefox -- --coverage=coverage/firefox
   test:flutter:
     name: Flutter tests
-    exec: flutter test --coverage
+    exec: flutter test
     packageFilters:
       flutter: true
       dirExists: test
-      fileExists: .melos_package
       ignore:
         - '*example*'
+  test:flutter:coverage:
+    name: Flutter tests with coverage
+    run: melos flutter:test -- --coverage
   test:coverage:
     name: Run all tests and display coverage
     run: |
-      melos run test
+      set -e
+      melos run test:vm:coverage
+      melos run test:web:chrome:coverage
+      melos run test:web:firefox:coverage
+      melos run test:flutter
       melos run coverage:format
       melos run coverage:show
 
@@ -135,16 +143,17 @@ scripts:
     packageFilters:
       flutter: true
   build:example:apk:
-    run: |
-      cd example_flutter_app
-      flutter build apk --debug
-
+    exec: flutter build apk --debug
+    packageFilters:
+      scope:
+        - 'dio_flutter_example'
   coverage:clean:
     name: Clear coverage
     exec: rm -rf coverage
   coverage:format:
     name: Format coverage
     run: |
+      set -e
       dart pub global activate coverage
       melos run coverage:format:package
   coverage:format:package:
@@ -156,6 +165,7 @@ scripts:
   coverage:combine:
     name: Combine & convert coverage report
     run: |
+      set -e
       rm -rf coverage
       dart pub global activate combine_coverage
       dart pub global activate cobertura
@@ -165,5 +175,6 @@ scripts:
   coverage:show:
     name: Show coverage report
     run: |
+      set -e
       melos run coverage:combine
       dart pub global run cobertura show
