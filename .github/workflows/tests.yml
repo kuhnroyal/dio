@@ -34,27 +34,31 @@ jobs:
       TEST_PRESET: all
     steps:
       - uses: actions/checkout@v4
+      - run: echo $PUB_CACHE
       - uses: subosito/flutter-action@v2
+        id: sdk
         with:
           cache: true
-          flutter-version: ${{ matrix.sdk == 'min' && '3.3.0' || '' }}
+          flutter-version: ${{ matrix.sdk == 'min' && '3.10.0' || '' }}
           channel: ${{ matrix.sdk == 'min' && '' || matrix.channel }}
-      - run: |
-          echo TARGET_DART_SDK=${{ matrix.sdk }} >> $GITHUB_ENV
-      - name: Prepare dependencies for the project management
-        run: dart pub get
-      - uses: bluefireteam/melos-action@v3
-        with:
-          run-bootstrap: false
+          pub-cache-path: $HOME/.pub-sdk-cache
+      - run: echo ${{ steps.sdk.outputs.PUB-CACHE-PATH }}
+      - run: echo $PUB_CACHE
+      - run: echo "MELOS_SDK_PATH=${{ steps.sdk.outputs.CACHE-PATH }}" >> $GITHUB_ENV
+#      - run: dart pub global activate melos
+      # Use the stable Dart SDK to run melos with.
+      # This is installed after Flutter/Dart so that is last in the $PATH.
+      - uses: dart-lang/setup-dart@v1
+      - run: echo $PUB_CACHE
+#      - run: dart pub get
+      - run: dart pub global activate melos
       - name: Remove dio_web_adapter overrides
+        # Have to remove this due to https://github.com/invertase/melos/issues/866
         if: ${{ matrix.sdk == 'min' }}
         run: rm -rf plugins/web_adapter
-      - name: Check satisfied packages
-        run: |
-          dart ./scripts/melos_packages.dart
-          echo $(cat .melos_packages) >> $GITHUB_ENV
       - name: Melos Bootstrap
-        run: melos bootstrap
+        run: melos bs --category ${{ matrix.sdk }}
+      - run: echo TARGET_DART_SDK=${{ matrix.sdk }} >> $GITHUB_ENV
       - name: '[Verify step] Format'
         if: ${{ matrix.sdk == 'stable' }}
         run: melos run format
@@ -86,16 +90,20 @@ jobs:
           curl --fail --silent --show-error https://httpbun.local/any
       - name: Use httpbun.local for tests
         run: melos run httpbun:local
+      - name: Determine coverage task suffix
+        if: ${{ matrix.sdk == 'stable' }}
+        id: coverage
+        run: echo "value=:coverage" >> $GITHUB_OUTPUT
       - name: '[Verify step] Test Dart packages [VM]'
-        run: melos run test:vm
+        run: melos run test:vm${{ steps.coverage.outputs.value }}
       - name: Use httpbun.com for Web/Flutter tests
         run: melos run httpbun:com
       - name: '[Verify step] Test Dart packages [Chrome]'
-        run: melos run test:web:chrome
+        run: melos run test:web:chrome${{ steps.coverage.outputs.value }}
       - name: '[Verify step] Test Dart packages [Firefox]'
-        run: melos run test:web:firefox
+        run: melos run test:web:firefox${{ steps.coverage.outputs.value }}
       - name: '[Verify step] Test Flutter packages'
-        run: melos run test:flutter
+        run: melos run test:flutter${{ steps.coverage.outputs.value }}
       - uses: actions/setup-java@v4
         if: ${{ matrix.sdk == 'stable' }}
         with:
