@@ -11,29 +11,26 @@ Dio is a powerful HTTP networking package for Dart and Flutter, supporting featu
 - **Languages**: Dart (primary), Flutter, CMake for native components
 - **Target Runtimes**: Dart VM, Flutter (iOS/Android/Web/Desktop), Web browsers
 - **Package Manager**: Dart pub, managed via Melos for monorepo coordination
-- **Minimum Dart SDK**: >=2.18.0 (follows compatibility policy of supporting SDKs released less than 2 years ago)
+- **Compatibility Requirements**: Code must be compatible with Dart >=2.18.0 and Flutter >=3.3.0 (follows compatibility policy of supporting SDKs released less than 2 years ago)
+- **Development Environment**: Assumes latest Flutter version is available
 
 ## Build, Test, and Development Commands
 
 ### Prerequisites
 
-**ALWAYS install these tools in this order before any development work:**
+**Development Environment Assumptions:**
+- Dart SDK (>=2.18.0) is installed and available
+- Flutter SDK (>=3.3.0) is installed and available  
+- Melos is globally installed (`dart pub global activate melos`)
+- Repository dependencies are installed (`dart pub get`)
 
+**Bootstrap Workspace:**
 ```bash
-# 1. Install Dart SDK (if not already installed)
-# Use official installer or package manager for your platform
-
-# 2. Install Melos globally - REQUIRED for all operations
-dart pub global activate melos
-
-# 3. Install dependencies (run from repository root)
-dart pub get
-
-# 4. Bootstrap the workspace - ALWAYS run this after cloning
+# Bootstrap the workspace - run when dependencies change
 melos bootstrap
 ```
 
-**Important:** The `melos bootstrap` command must be run after cloning and whenever dependencies change. The project uses a custom script (`scripts/melos_packages.dart`) to check package compatibility with current Dart SDK.
+**Important:** The `melos bootstrap` command only needs to be run when dependencies have been changed. The project uses a custom script (`scripts/melos_packages.dart`) to check package compatibility with current Dart SDK.
 
 ### Core Development Commands
 
@@ -142,7 +139,8 @@ melos clean
 4. `melos run publish-dry-run` - Package publishing validation
 
 **CI/CD Pipeline:**
-- Runs on Dart SDK: min (3.3.0), stable, beta
+- Runs on Dart SDK: min (2.18.0), stable, beta
+- Ensures compatibility with Flutter 3.3.0+
 - Tests on: Ubuntu (VM tests), Chrome/Firefox (web tests), Flutter platforms
 - Includes coverage reporting and APK building
 - Uses Docker for httpbun test server with SSL certificates
@@ -173,7 +171,7 @@ melos clean
 ### Common Issues and Workarounds
 
 1. **SDK Compatibility**: Run `dart ./scripts/melos_packages.dart` to check package compatibility
-2. **Bootstrap Failures**: Ensure Melos is globally installed before running `melos bootstrap`
+2. **Bootstrap Failures**: Ensure Melos is globally installed and run `melos bootstrap` when dependencies change
 3. **Test Failures**: Network tests may fail without internet; use local httpbun setup for CI
 4. **Coverage Issues**: Delete `coverage/` directory if coverage generation fails
 5. **Format Issues**: Use `melos run format:fix` instead of `melos run format` to auto-fix
@@ -193,8 +191,8 @@ melos clean
 - The melos.yaml configuration has changed significantly
 
 **Efficient Development Workflow:**
-1. Ensure Melos is installed globally
-2. Run `melos bootstrap` after any dependency changes
+1. Ensure development environment is ready (Dart >=2.18.0, Flutter >=3.3.0, Melos)
+2. Run `melos bootstrap` only when dependencies have changed
 3. Use `melos run format:fix && melos run analyze` before making changes
 4. Make focused changes in appropriate packages
 5. Run relevant test subset first (`melos run test:vm` for logic changes)
