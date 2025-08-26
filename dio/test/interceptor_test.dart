@@ -27,7 +27,7 @@ void main() {
   test('Throws precise StateError for duplicate calls', () async {
     const message = 'The `handler` has already been called, '
         'make sure each handler gets called only once.';
-        
+
     // Test case 1: Duplicate handler.next() calls in request interceptor
     final duplicateRequestCallsDio = Dio()
       ..options.baseUrl = MockAdapter.mockBase
@@ -35,25 +35,25 @@ void main() {
       ..interceptors.add(
         InterceptorsWrapper(
           onRequest: (options, handler) {
-            handler.next(options);  // First call - valid
-            handler.next(options);  // Second call - should throw StateError
+            handler.next(options); // First call - valid
+            handler.next(options); // Second call - should throw StateError
           },
         ),
       );
-      
-    // Test case 2: Duplicate handler.resolve() calls in response interceptor  
+
+    // Test case 2: Duplicate handler.resolve() calls in response interceptor
     final duplicateResponseCalls = Dio()
       ..options.baseUrl = MockAdapter.mockBase
       ..httpClientAdapter = MockAdapter()
       ..interceptors.add(
         InterceptorsWrapper(
           onResponse: (response, handler) {
-            handler.resolve(response);  // First call - valid
-            handler.resolve(response);  // Second call - should throw StateError
+            handler.resolve(response); // First call - valid
+            handler.resolve(response); // Second call - should throw StateError
           },
         ),
       );
-      
+
     // Test case 3: Duplicate handler.resolve() calls in error interceptor
     final duplicateErrorCalls = Dio()
       ..options.baseUrl = MockAdapter.mockBase
@@ -61,8 +61,11 @@ void main() {
       ..interceptors.add(
         InterceptorsWrapper(
           onError: (error, handler) {
-            handler.resolve(Response(requestOptions: error.requestOptions));  // First call - valid
-            handler.resolve(Response(requestOptions: error.requestOptions));  // Second call - should throw StateError
+            handler.resolve(Response(
+                requestOptions: error.requestOptions)); // First call - valid
+            handler.resolve(Response(
+                requestOptions: error
+                    .requestOptions)); // Second call - should throw StateError
           },
         ),
       );
@@ -145,7 +148,7 @@ void main() {
                   // Resolve but call following response interceptors
                   handler.resolve(
                     Response(requestOptions: reqOpt, data: 2),
-                    true,  // callFollowingResponseInterceptor = true
+                    true, // callFollowingResponseInterceptor = true
                   );
                   break;
                 case '/resolve-next/always':
@@ -178,7 +181,7 @@ void main() {
                   // Reject but call following error interceptors
                   handler.reject(
                     DioException(requestOptions: reqOpt, error: 4),
-                    true,  // callFollowingErrorInterceptor = true
+                    true, // callFollowingErrorInterceptor = true
                   );
                   break;
                 case '/reject-next/reject':
@@ -813,32 +816,32 @@ void main() {
   test('Size of Interceptors', () {
     // Test 1: Default behavior - Dio instances start with ImplyContentTypeInterceptor
     final interceptors1 = Dio().interceptors;
-    expect(interceptors1.length, equals(1));  // One default interceptor
+    expect(interceptors1.length, equals(1)); // One default interceptor
     expect(interceptors1, isNotEmpty);
-    
+
     // Test 2: Adding interceptors increases the count
     interceptors1.add(InterceptorsWrapper());
-    expect(interceptors1.length, equals(2));  // Default + custom interceptor
+    expect(interceptors1.length, equals(2)); // Default + custom interceptor
     expect(interceptors1, isNotEmpty);
-    
+
     // Test 3: clear() by default keeps ImplyContentTypeInterceptor
     interceptors1.clear();
-    expect(interceptors1.length, equals(1));  // Only default interceptor remains
+    expect(interceptors1.length, equals(1)); // Only default interceptor remains
     expect(interceptors1.single, isA<ImplyContentTypeInterceptor>());
-    
+
     // Test 4: clear() with keepImplyContentTypeInterceptor=false removes all
     interceptors1.clear(keepImplyContentTypeInterceptor: false);
-    expect(interceptors1.length, equals(0));  // Completely empty
+    expect(interceptors1.length, equals(0)); // Completely empty
     expect(interceptors1, isEmpty);
 
     // Test 5: Creating Interceptors with initialInterceptors
     final interceptors2 = Interceptors()..add(LogInterceptor());
-    expect(interceptors2.length, equals(2));  // Default + LogInterceptor
+    expect(interceptors2.length, equals(2)); // Default + LogInterceptor
     expect(interceptors2.last, isA<LogInterceptor>());
 
     // Test 6: Constructor with initialInterceptors parameter
     final interceptors3 = Interceptors(initialInterceptors: [LogInterceptor()]);
-    expect(interceptors3.length, equals(2));  // Default + provided interceptor
+    expect(interceptors3.length, equals(2)); // Default + provided interceptor
     expect(interceptors2.last, isA<LogInterceptor>());
   });
 
@@ -848,22 +851,22 @@ void main() {
     final interceptors = Interceptors();
     final logInterceptor = LogInterceptor();
     final customInterceptor = MyInterceptor();
-    
+
     // Add multiple interceptors
     interceptors.addAll([logInterceptor, customInterceptor]);
     expect(interceptors.length, equals(3)); // Default + 2 custom
-    
+
     // Remove specific interceptor
     interceptors.remove(logInterceptor);
     expect(interceptors.length, equals(2));
     expect(interceptors.contains(logInterceptor), isFalse);
     expect(interceptors.contains(customInterceptor), isTrue);
-    
+
     // Remove by type
     interceptors.removeWhere((interceptor) => interceptor is MyInterceptor);
     expect(interceptors.length, equals(1)); // Only default remains
     expect(interceptors.single, isA<ImplyContentTypeInterceptor>());
-    
+
     // Test removeImplyContentTypeInterceptor method
     interceptors.removeImplyContentTypeInterceptor();
     expect(interceptors.length, equals(0));
@@ -872,10 +875,11 @@ void main() {
 
   /// Tests the difference between regular and queued interceptors with concurrent requests.
   /// This demonstrates why QueuedInterceptor is important for operations that must be serialized.
-  test('Regular vs Queued interceptor behavior with concurrent requests', () async {
+  test('Regular vs Queued interceptor behavior with concurrent requests',
+      () async {
     int regularInterceptorCount = 0;
     int queuedInterceptorCount = 0;
-    
+
     // Setup Dio with regular interceptor
     final dioRegular = Dio()
       ..options.baseUrl = MockAdapter.mockBase
@@ -889,7 +893,7 @@ void main() {
         ),
       );
 
-    // Setup Dio with queued interceptor  
+    // Setup Dio with queued interceptor
     final dioQueued = Dio()
       ..options.baseUrl = MockAdapter.mockBase
       ..httpClientAdapter = MockAdapter()
@@ -906,18 +910,18 @@ void main() {
     const requestCount = 3;
     final futures1 = <Future>[];
     final futures2 = <Future>[];
-    
+
     for (int i = 0; i < requestCount; i++) {
       futures1.add(dioRegular.get('/test$i').catchError((e) => Response(
-        requestOptions: RequestOptions(),
-        statusCode: 500,
-      )));
+            requestOptions: RequestOptions(),
+            statusCode: 500,
+          )));
       futures2.add(dioQueued.get('/test$i').catchError((e) => Response(
-        requestOptions: RequestOptions(), 
-        statusCode: 500,
-      )));
+            requestOptions: RequestOptions(),
+            statusCode: 500,
+          )));
     }
-    
+
     await Future.wait(futures1);
     await Future.wait(futures2);
 
@@ -931,7 +935,7 @@ void main() {
   test('Handler callFollowing parameter behavior', () async {
     final responses = <String>[];
     final errors = <String>[];
-    
+
     final dio = Dio()
       ..options.baseUrl = MockAdapter.mockBase
       ..httpClientAdapter = MockAdapter()
@@ -947,7 +951,7 @@ void main() {
             } else if (options.path == '/reject-following') {
               handler.reject(
                 DioException(requestOptions: options, error: 'first-error'),
-                true, // callFollowingErrorInterceptor = true  
+                true, // callFollowingErrorInterceptor = true
               );
             } else {
               handler.next(options);
@@ -993,7 +997,7 @@ void main() {
     try {
       await dio.get('/reject-following');
       fail('Should have thrown DioException');
-        } catch (e) {
+    } catch (e) {
       expect(e, isA<DioException>());
       final dioException = e as DioException;
       expect(dioException.error, equals('modified-first-error'));
