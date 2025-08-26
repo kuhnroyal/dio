@@ -7,6 +7,8 @@ import 'package:test/test.dart';
 
 import 'mock/adapters.dart';
 
+/// Custom interceptor example that tracks the number of requests.
+/// Demonstrates how to create a simple interceptor by extending the base Interceptor class.
 class MyInterceptor extends Interceptor {
   int requestCount = 0;
 
@@ -18,42 +20,57 @@ class MyInterceptor extends Interceptor {
 }
 
 void main() {
+  /// Tests that handlers throw StateError when called multiple times.
+  /// This is a critical safety feature that prevents interceptors from
+  /// inadvertently calling handler methods multiple times, which could
+  /// lead to undefined behavior or resource leaks.
   test('Throws precise StateError for duplicate calls', () async {
     const message = 'The `handler` has already been called, '
         'make sure each handler gets called only once.';
+
+    // Test case 1: Duplicate handler.next() calls in request interceptor
     final duplicateRequestCallsDio = Dio()
       ..options.baseUrl = MockAdapter.mockBase
       ..httpClientAdapter = MockAdapter()
       ..interceptors.add(
         InterceptorsWrapper(
           onRequest: (options, handler) {
-            handler.next(options);
-            handler.next(options);
+            handler.next(options); // First call - valid
+            handler.next(options); // Second call - should throw StateError
           },
         ),
       );
+
+    // Test case 2: Duplicate handler.resolve() calls in response interceptor
     final duplicateResponseCalls = Dio()
       ..options.baseUrl = MockAdapter.mockBase
       ..httpClientAdapter = MockAdapter()
       ..interceptors.add(
         InterceptorsWrapper(
           onResponse: (response, handler) {
-            handler.resolve(response);
-            handler.resolve(response);
+            handler.resolve(response); // First call - valid
+            handler.resolve(response); // Second call - should throw StateError
           },
         ),
       );
+
+    // Test case 3: Duplicate handler.resolve() calls in error interceptor
     final duplicateErrorCalls = Dio()
       ..options.baseUrl = MockAdapter.mockBase
       ..httpClientAdapter = MockAdapter()
       ..interceptors.add(
         InterceptorsWrapper(
           onError: (error, handler) {
-            handler.resolve(Response(requestOptions: error.requestOptions));
-            handler.resolve(Response(requestOptions: error.requestOptions));
+            handler.resolve(Response(
+                requestOptions: error.requestOptions)); // First call - valid
+            handler.resolve(Response(
+                requestOptions: error
+                    .requestOptions)); // Second call - should throw StateError
           },
         ),
       );
+    // Verify that all three scenarios throw the expected StateError
+    // with the correct message about handler being called multiple times
     await expectLater(
       duplicateRequestCallsDio.get('/test'),
       throwsA(
@@ -86,7 +103,12 @@ void main() {
     );
   });
 
+  /// Tests the InterceptorState class functionality.
+  /// InterceptorState is used internally to pass data and execution state
+  /// between interceptors in the processing chain.
   group('InterceptorState', () {
+    /// Tests the toString() method provides useful debugging information
+    /// including the type parameter, result type, and contained data.
     test('toString()', () {
       final data = DioException(requestOptions: RequestOptions());
       final state = InterceptorState<DioException>(data);
@@ -100,83 +122,106 @@ void main() {
     });
   });
 
+  /// Tests for request interceptor functionality and behavior.
+  /// Request interceptors can modify options, resolve with responses,
+  /// or reject with errors before the actual network request is made.
   group('Request Interceptor', () {
+    /// Tests the full interceptor chain with various handler method combinations.
+    /// This comprehensive test demonstrates how different handler methods
+    /// (next, resolve, reject) with different callFollowing flags affect
+    /// the execution flow through multiple interceptors.
     test('interceptor chain', () async {
       final dio = Dio();
       dio.options.baseUrl = EchoAdapter.mockBase;
       dio.httpClientAdapter = EchoAdapter();
       dio.interceptors
         ..add(
+          // First interceptor: Request processing with various actions
           InterceptorsWrapper(
             onRequest: (reqOpt, handler) {
               switch (reqOpt.path) {
                 case '/resolve':
+                  // Resolve immediately, skip network and following interceptors
                   handler.resolve(Response(requestOptions: reqOpt, data: 1));
                   break;
                 case '/resolve-next':
+                  // Resolve but call following response interceptors
                   handler.resolve(
                     Response(requestOptions: reqOpt, data: 2),
-                    true,
+                    true, // callFollowingResponseInterceptor = true
                   );
                   break;
                 case '/resolve-next/always':
+                  // Resolve with callFollowing to test response processing
                   handler.resolve(
                     Response(requestOptions: reqOpt, data: 2),
                     true,
                   );
                   break;
                 case '/resolve-next/reject':
+                  // Resolve then test error handling in response interceptor
                   handler.resolve(
                     Response(requestOptions: reqOpt, data: 2),
                     true,
                   );
                   break;
                 case '/resolve-next/reject-next':
+                  // Complex flow: resolve, then error handling with callFollowing
                   handler.resolve(
                     Response(requestOptions: reqOpt, data: 2),
                     true,
                   );
                   break;
                 case '/reject':
+                  // Reject immediately, skip network and following interceptors
                   handler
                       .reject(DioException(requestOptions: reqOpt, error: 3));
                   break;
                 case '/reject-next':
+                  // Reject but call following error interceptors
                   handler.reject(
                     DioException(requestOptions: reqOpt, error: 4),
-                    true,
+                    true, // callFollowingErrorInterceptor = true
                   );
                   break;
                 case '/reject-next/reject':
+                  // Reject with callFollowing to test error processing
                   handler.reject(
                     DioException(requestOptions: reqOpt, error: 5),
                     true,
                   );
                   break;
                 case '/reject-next-response':
+                  // Test error recovery in response interceptor
                   handler.reject(
                     DioException(requestOptions: reqOpt, error: 5),
                     true,
                   );
                   break;
                 default:
-                  handler.next(reqOpt); //continue
+                  // Continue normal processing
+                  handler.next(reqOpt);
               }
             },
+            // Response interceptor: Processes responses from request interceptor
             onResponse: (response, ResponseInterceptorHandler handler) {
               final options = response.requestOptions;
               switch (options.path) {
                 case '/resolve':
+                  // This should never execute due to immediate resolve above
                   throw 'unexpected1';
                 case '/resolve-next':
+                  // Modify response data and resolve
                   response.data++;
                   handler.resolve(response); //3
                   break;
                 case '/resolve-next/always':
+                  // Modify response and continue to next interceptor
                   response.data++;
                   handler.next(response); //3
                   break;
                 case '/resolve-next/reject':
+                  // Demonstrate error injection in response interceptor
                   handler.reject(
                     DioException(
                       requestOptions: options,
@@ -765,26 +810,199 @@ void main() {
     });
   });
 
+  /// Tests the Interceptors list management functionality.
+  /// The Interceptors class extends ListMixin and provides special handling
+  /// for the default ImplyContentTypeInterceptor that is automatically added.
   test('Size of Interceptors', () {
+    // Test 1: Default behavior - Dio instances start with ImplyContentTypeInterceptor
     final interceptors1 = Dio().interceptors;
-    expect(interceptors1.length, equals(1));
+    expect(interceptors1.length, equals(1)); // One default interceptor
     expect(interceptors1, isNotEmpty);
+
+    // Test 2: Adding interceptors increases the count
     interceptors1.add(InterceptorsWrapper());
-    expect(interceptors1.length, equals(2));
+    expect(interceptors1.length, equals(2)); // Default + custom interceptor
     expect(interceptors1, isNotEmpty);
+
+    // Test 3: clear() by default keeps ImplyContentTypeInterceptor
     interceptors1.clear();
-    expect(interceptors1.length, equals(1));
+    expect(interceptors1.length, equals(1)); // Only default interceptor remains
     expect(interceptors1.single, isA<ImplyContentTypeInterceptor>());
+
+    // Test 4: clear() with keepImplyContentTypeInterceptor=false removes all
     interceptors1.clear(keepImplyContentTypeInterceptor: false);
-    expect(interceptors1.length, equals(0));
+    expect(interceptors1.length, equals(0)); // Completely empty
     expect(interceptors1, isEmpty);
 
+    // Test 5: Creating Interceptors with initialInterceptors
     final interceptors2 = Interceptors()..add(LogInterceptor());
-    expect(interceptors2.length, equals(2));
+    expect(interceptors2.length, equals(2)); // Default + LogInterceptor
     expect(interceptors2.last, isA<LogInterceptor>());
 
+    // Test 6: Constructor with initialInterceptors parameter
     final interceptors3 = Interceptors(initialInterceptors: [LogInterceptor()]);
-    expect(interceptors3.length, equals(2));
+    expect(interceptors3.length, equals(2)); // Default + provided interceptor
     expect(interceptors2.last, isA<LogInterceptor>());
+  });
+
+  /// Tests interceptor removal and management operations.
+  /// Demonstrates how to dynamically manage interceptors in the list.
+  test('Interceptor removal and management', () {
+    final interceptors = Interceptors();
+    final logInterceptor = LogInterceptor();
+    final customInterceptor = MyInterceptor();
+
+    // Add multiple interceptors
+    interceptors.addAll([logInterceptor, customInterceptor]);
+    expect(interceptors.length, equals(3)); // Default + 2 custom
+
+    // Remove specific interceptor
+    interceptors.remove(logInterceptor);
+    expect(interceptors.length, equals(2));
+    expect(interceptors.contains(logInterceptor), isFalse);
+    expect(interceptors.contains(customInterceptor), isTrue);
+
+    // Remove by type
+    interceptors.removeWhere((interceptor) => interceptor is MyInterceptor);
+    expect(interceptors.length, equals(1)); // Only default remains
+    expect(interceptors.single, isA<ImplyContentTypeInterceptor>());
+
+    // Test removeImplyContentTypeInterceptor method
+    interceptors.removeImplyContentTypeInterceptor();
+    expect(interceptors.length, equals(0));
+    expect(interceptors.isEmpty, isTrue);
+  });
+
+  /// Tests the difference between regular and queued interceptors with concurrent requests.
+  /// This demonstrates why QueuedInterceptor is important for operations that must be serialized.
+  test('Regular vs Queued interceptor behavior with concurrent requests',
+      () async {
+    int regularInterceptorCount = 0;
+    int queuedInterceptorCount = 0;
+
+    // Setup Dio with regular interceptor
+    final dioRegular = Dio()
+      ..options.baseUrl = MockAdapter.mockBase
+      ..httpClientAdapter = MockAdapter()
+      ..interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            regularInterceptorCount++;
+            handler.next(options);
+          },
+        ),
+      );
+
+    // Setup Dio with queued interceptor
+    final dioQueued = Dio()
+      ..options.baseUrl = MockAdapter.mockBase
+      ..httpClientAdapter = MockAdapter()
+      ..interceptors.add(
+        QueuedInterceptorsWrapper(
+          onRequest: (options, handler) {
+            queuedInterceptorCount++;
+            handler.next(options);
+          },
+        ),
+      );
+
+    // Make concurrent requests and ignore errors (we just want to count interceptor calls)
+    const requestCount = 3;
+    final futures1 = <Future>[];
+    final futures2 = <Future>[];
+
+    for (int i = 0; i < requestCount; i++) {
+      futures1.add(dioRegular.get('/test$i').catchError((e) => Response(
+            requestOptions: RequestOptions(),
+            statusCode: 500,
+          )));
+      futures2.add(dioQueued.get('/test$i').catchError((e) => Response(
+            requestOptions: RequestOptions(),
+            statusCode: 500,
+          )));
+    }
+
+    await Future.wait(futures1);
+    await Future.wait(futures2);
+
+    // Both should process all requests, but queued interceptor processes them serially
+    expect(regularInterceptorCount, equals(requestCount));
+    expect(queuedInterceptorCount, equals(requestCount));
+  });
+
+  /// Tests the callFollowing parameter behavior in handler methods.
+  /// Demonstrates how resolve/reject with callFollowing=true affects the interceptor chain.
+  test('Handler callFollowing parameter behavior', () async {
+    final responses = <String>[];
+    final errors = <String>[];
+
+    final dio = Dio()
+      ..options.baseUrl = MockAdapter.mockBase
+      ..httpClientAdapter = MockAdapter()
+      ..interceptors.addAll([
+        // First interceptor: resolve with callFollowing=true
+        InterceptorsWrapper(
+          onRequest: (options, handler) {
+            if (options.path == '/resolve-following') {
+              handler.resolve(
+                Response(requestOptions: options, data: 'first'),
+                true, // callFollowingResponseInterceptor = true
+              );
+            } else if (options.path == '/reject-following') {
+              handler.reject(
+                DioException(requestOptions: options, error: 'first-error'),
+                true, // callFollowingErrorInterceptor = true
+              );
+            } else {
+              handler.next(options);
+            }
+          },
+        ),
+        // Second interceptor: should be called due to callFollowing=true
+        InterceptorsWrapper(
+          onResponse: (response, handler) {
+            responses.add('second-response: ${response.data}');
+            response.data = 'modified-${response.data}';
+            handler.next(response);
+          },
+          onError: (error, handler) {
+            errors.add('second-error: ${error.error}');
+            handler.next(error.copyWith(error: 'modified-${error.error}'));
+          },
+        ),
+        // Third interceptor: should also be called due to callFollowing chain
+        InterceptorsWrapper(
+          onResponse: (response, handler) {
+            responses.add('third-response: ${response.data}');
+            handler.next(response);
+          },
+          onError: (error, handler) {
+            errors.add('third-error: ${error.error}');
+            handler.next(error);
+          },
+        ),
+      ]);
+
+    // Test resolve with callFollowing=true
+    final resolveResponse = await dio.get('/resolve-following');
+    expect(resolveResponse.data, equals('modified-first'));
+    expect(responses, contains('second-response: first'));
+    expect(responses, contains('third-response: modified-first'));
+
+    // Reset for next test
+    responses.clear();
+    errors.clear();
+
+    // Test reject with callFollowing=true
+    try {
+      await dio.get('/reject-following');
+      fail('Should have thrown DioException');
+    } catch (e) {
+      expect(e, isA<DioException>());
+      final dioException = e as DioException;
+      expect(dioException.error, equals('modified-first-error'));
+      expect(errors, contains('second-error: first-error'));
+      expect(errors, contains('third-error: modified-first-error'));
+    }
   });
 }
